@@ -1,13 +1,5 @@
 /*
- * mm-naive.c - The fastest, least memory-efficient malloc package.
- * 
- * In this naive approach, a block is allocated by simply incrementing
- * the brk pointer.  A block is pure payload. There are no headers or
- * footers.  Blocks are never coalesced or reused. Realloc is
- * implemented directly using mm_malloc and mm_free.
- *
- * NOTE TO STUDENTS: Replace this header comment with your own header
- * comment that gives a high level description of your solution.
+ * Dynamic memory allocation with implicit list method
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +26,13 @@ team_t team = {
     /* Second member's email address (leave blank if none) */
     ""
 };
+
+/* Run checkheap if DEBUG is defined */
+#ifdef DEBUG
+#define CHECKHEAP(lineno) printf("%s\n", __func__); mm_checkheap(lineno);
+#else
+#define CHECKHEAP(lineno)
+#endif
 
 /* Basic constants and macros */
 #define WSIZE 4
@@ -65,6 +64,9 @@ static void *extend_heap(size_t words);
 static void place(void *bp, size_t asize);
 static void *find_fit(size_t asize);
 static void *coalesce(void *bp);
+void mm_checkheap(int lineno);
+static void checkblock(void *bp);
+static void checkheap(int verbose);
 
 /* First block pointer */
 static char *heap_listp = 0;
@@ -174,6 +176,9 @@ void *mm_malloc(size_t size)
 	if ((bp = extend_heap(extendsize/WSIZE)) == NULL)
 		return NULL;
 	place(bp, asize);
+
+	CHECKHEAP(__LINE__);
+
 	return bp;
 }
 
@@ -229,6 +234,8 @@ void mm_free(void *bp)
 	PUT(HDRP(bp), PACK(size, 0));
 	PUT(FTRP(bp), PACK(size, 0));
 	coalesce(bp);
+
+	CHECKHEAP(__LINE__);
 }
 
 /*
@@ -260,13 +267,56 @@ void *mm_realloc(void *ptr, size_t size)
 	/* Free the old block. */
 	mm_free(ptr);
 
+	CHECKHEAP(__LINE__);
+	
 	return newptr;
 }
 
+void mm_checkheap(int lineno)
+{
+	checkheap(0);
+}
 
+static void checkblock(void *bp)
+{
+	/* Check payload area is aligned */
+	if ((size_t)bp & 8)
+		printf("Error: %p is not doubleword aligned\n", bp);
 
+	/* Check header and footer match */
+	if (!(GET_ALLOC(HDRP(bp))) && (GET(HDRP(bp)) != GET(FTRP(bp)))) {
+		printf("Error : head does not match footer\n");
+	}
 
+	/* Check contiguous free blocks */
+	if (!(GET_ALLOC(HDRP(bp))) && !(GET_ALLOC(HDRP(NEXT_BLKP(bp))))) {
+		printf("Error : contiguous free blocks\n");
+	}
+}
 
+/*
+ * checkheap - check of the heap for consistency
+ */
+static void checkheap(int verbose)
+{
+	char *bp = heap_listp;
+
+	if (verbose)
+		printf("Heap (%p):\n", heap_listp);
+
+	/* Check prologue block size and status */
+	if ((GET_SIZE(HDRP(heap_listp)) != DSIZE) || !GET_ALLOC(HDRP(heap_listp)))
+		printf("Bad prologue header\n");
+	
+	/* Check blocks in implicit list */
+	for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
+		checkblock(bp);
+	}
+
+	/* Check epilogue block size and status */
+	if ((GET_SIZE(HDRP(bp)) != 0) || !(GET_ALLOC(HDRP(bp))))
+		printf("Bad epilogue header\n");
+}
 
 
 
