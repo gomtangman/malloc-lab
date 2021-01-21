@@ -62,7 +62,7 @@ team_t team = {
 #define PREV_BLKP(bp) ((char *)(bp)-GET_SIZE(((char *)(bp)-DSIZE)))
 
 // < 간단한 퍼스트 핏 임플리싯이어서 따로 리뷰는 안하겠습니다. >
-// < 나중에 힙체커에 대해 좀 물어보겠습니다. >
+// < 나중에 힙체커에 대해 좀 물어보겠습니다dd. >
 
 static void *extend_heap(size_t words);
 static void place(void *bp, size_t asize);
